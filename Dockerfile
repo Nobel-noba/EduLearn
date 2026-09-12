@@ -12,11 +12,11 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install npm dependencies
-RUN npm install --ignore-scripts
+RUN npm ci --ignore-scripts
 
 # Copy frontend source code
 COPY resources ./resources
-COPY vite.config.js tailwind.config.js postcss.config.js tsconfig.json ./
+COPY vite.config.js tsconfig.json ./
 COPY public ./public
 
 # Build production assets using Vite
