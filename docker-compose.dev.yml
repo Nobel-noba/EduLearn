@@ -1,0 +1,16 @@
+version: '3.8'
+
+# ------------------------------------------------------------------------------
+# Development Override for Live Reloading & Host Volume Mounting
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# ------------------------------------------------------------------------------
+services:
+  app:
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+    volumes:
+      - .:/var/www
+      - /var/www/vendor
+      - /var/www/node_modules
+      - storage_data:/var/www/storage
