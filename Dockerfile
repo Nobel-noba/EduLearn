@@ -12,7 +12,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install npm dependencies
-RUN npm ci --ignore-scripts
+RUN npm install --ignore-scripts
 
 # Copy frontend source code
 COPY resources ./resources
