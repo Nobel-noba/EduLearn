@@ -25,7 +25,7 @@ RUN npm run build
 # ------------------------------------------------------------------------------
 # Stage 2: Production PHP + Nginx Runtime
 # ------------------------------------------------------------------------------
-FROM php:8.3-fpm-alpine AS production
+FROM php:8.4-fpm-alpine AS production
 
 # Set working directory
 WORKDIR /var/www
