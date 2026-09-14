@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Modern 3-Sided Educational Video Platform & Course Marketplace</strong><br />
-  Built with <strong>Laravel 13</strong>, <strong>Inertia.js v2</strong>, <strong>React 19</strong>, <strong>Tailwind CSS</strong>, and <strong>MySQL 8.0</strong>.<br />
+  Built with <strong>Laravel 13</strong>, <strong>Inertia.js v2</strong>, <strong>React 19</strong>, <strong>Tailwind CSS</strong>, and <strong>PostgreSQL 16</strong>.<br />
   Fully containerized with production-grade <strong>Docker</strong>, <strong>Nginx</strong>, and <strong>Supervisor</strong>.
 </p>
 
@@ -69,7 +69,7 @@ EduLearn is a production-ready, full-stack educational marketplace and learning 
 
 ## Docker Quick Start (2 Minutes)
 
-Deploy the entire platform (Web Application, Nginx, PHP 8.3 FPM, MySQL 8.0, and phpMyAdmin) using a single Docker command.
+Deploy the entire platform (Web Application, Nginx, PHP 8.4 FPM, and PostgreSQL 16) using a single Docker command.
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS, Windows with WSL2, or Linux)
@@ -97,10 +97,9 @@ docker compose up -d --build
 ```
 
 Docker will automatically:
-1. Build the multi-stage image (compile Vite React frontend + configure PHP 8.3 FPM & Nginx).
-2. Start the MySQL 8.0 database container and automatically import the pre-seeded `edu` database from `docker/mysql/init.sql`.
+1. Build the multi-stage image (compile Vite React frontend + configure PHP 8.4 FPM & Nginx with `pdo_pgsql`).
+2. Start the PostgreSQL 16 database container and automatically import the pre-seeded `edulearn` database from `docker/postgres/init.sql`.
 3. Start the EduLearn application with Supervisor managing Nginx and PHP-FPM.
-4. Launch phpMyAdmin for database inspection.
 
 ### 4. Access the Application
 Once the containers are healthy (approximately 15–30 seconds):
@@ -108,8 +107,7 @@ Once the containers are healthy (approximately 15–30 seconds):
 | Service | URL | Default Credentials |
 | :--- | :--- | :--- |
 | **EduLearn Application** | [http://localhost:8000](http://localhost:8000) | Use 1-Click Switcher in header |
-| **phpMyAdmin Database GUI** | [http://localhost:8080](http://localhost:8080) | User: `root` / Pass: `1234` |
-| **MySQL Database Port** | `localhost:33060` | User: `root` / Pass: `1234` / DB: `edu` |
+| **PostgreSQL Database Port** | `localhost:5432` | User: `postgres` / Pass: `postgres` / DB: `edulearn` |
 
 ---
 
@@ -129,7 +127,10 @@ Use the **1-Click Persona Switcher** dropdown in the top announcement bar to ins
 
 ## Database Architecture & Pre-Seeded Data
 
-When the MySQL container initializes for the first time, it automatically runs [`docker/mysql/init.sql`](file:///c:/Users/Noba/Documents/Workspace/EduLearn/docker/mysql/init.sql) inside `/docker-entrypoint-initdb.d/`.
+When the PostgreSQL container initializes for the first time, it automatically runs [`docker/postgres/init.sql`](docker/postgres/init.sql) inside `/docker-entrypoint-initdb.d/`. Alternatively, you can use standard Laravel migrations and seeders:
+```bash
+php artisan migrate --seed
+```
 
 ### 15 Relational Tables Included:
 1. `user`: Roles (`ADMIN`, `INSTRUCTOR`, `STUDENT`), wallet balance, avatars, credentials.
@@ -167,17 +168,12 @@ The platform utilizes a modern containerized design:
                │  │           ▲                                      │  │
                │  │           └───── Managed by Supervisord          │  │
                │  └──────────────────────────┬───────────────────────┘  │
-               │                             │ (PDO MySQL)              │
+               │                             │ (PDO PostgreSQL)         │
                │                             ▼                          │
                │  ┌──────────────────────────────────────────────────┐  │
-               │  │  Container: edulearn-db (Port: 33060 -> 3306)    │  │
-               │  │  MySQL 8.0 Community Server                      │  │
-               │  │  Database: edu (Persistent Volume: db_data)      │  │
-               │  └──────────────────────────▲───────────────────────┘  │
-               │                             │                          │
-               │  ┌──────────────────────────┴───────────────────────┐  │
-               │  │  Container: edulearn-phpmyadmin (Port: 8080)     │  │
-               │  │  phpMyAdmin Web GUI Interface                    │  │
+               │  │  Container: edulearn-db (Port: 5432 -> 5432)     │  │
+               │  │  PostgreSQL 16 Engine                            │  │
+               │  │  Database: edulearn (Persistent Volume: pg_data) │  │
                │  └──────────────────────────────────────────────────┘  │
                └────────────────────────────────────────────────────────┘
 ```
@@ -235,9 +231,13 @@ docker compose exec app php artisan tinker
 ```
 
 ### Re-seeding Database
-To reset the database back to initial state from the SQL dump:
+To reset the database back to initial state from the SQL dump or Laravel seeders:
 ```bash
-docker compose exec -T db mysql -u root -p1234 edu < docker/mysql/init.sql
+# Using psql:
+docker compose exec -T db psql -U postgres -d edulearn < docker/postgres/init.sql
+
+# Or using Laravel Artisan:
+docker compose exec app php artisan migrate:fresh --seed
 ```
 
 ---
@@ -260,7 +260,7 @@ This mounts your local workspace directory directly into `/var/www` while isolat
 
 ## Production Deployment Guide
 
-To deploy EduLearn to any cloud VPS (Ubuntu/Debian, DigitalOcean, AWS EC2, Linode, Hetzner):
+To deploy EduLearn to any cloud VPS (Ubuntu/Debian, DigitalOcean, AWS EC2, Linode, Hetzner, Render):
 
 ### 1. Install Docker on Server
 ```bash
@@ -276,15 +276,15 @@ APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://yourdomain.com
 
-DB_CONNECTION=mysql
+DB_CONNECTION=pgsql
 DB_HOST=db
-DB_PORT=3306
-DB_DATABASE=edu
-DB_USERNAME=edu_user
+DB_PORT=5432
+DB_DATABASE=edulearn
+DB_USERNAME=postgres
 DB_PASSWORD=YOUR_STRONG_SECURE_PASSWORD
 ```
 
-Update `MYSQL_PASSWORD` and `MYSQL_ROOT_PASSWORD` in `docker-compose.yml` to match.
+Update `POSTGRES_PASSWORD` in `docker-compose.yml` to match.
 
 ### 3. Deploy with Docker Compose
 ```bash
@@ -324,7 +324,7 @@ If your host is already using port 8000 or 8080:
 3. Restart containers: `docker compose up -d`.
 
 ### Container Shows "Database not ready yet... Retrying"
-MySQL 8.0 takes roughly 10–20 seconds on its first boot to initialize storage. The `entrypoint.sh` script automatically retries every 2 seconds until the database responds healthy.
+PostgreSQL takes roughly 5–15 seconds on its first boot to initialize storage. The `entrypoint.sh` script automatically retries every 2 seconds until the database responds healthy.
 
 ### Permissions Issues on Storage
 If you encounter file permission errors:

@@ -20,19 +20,25 @@ if [ ! -f /var/www/.env ]; then
     fi
 fi
 
-# Wait for MySQL connection if DB_HOST is provided
+# Wait for Database connection if DB_HOST is provided
+DB_CONNECTION="${DB_CONNECTION:-pgsql}"
 DB_HOST="${DB_HOST:-db}"
-DB_PORT="${DB_PORT:-3306}"
-DB_DATABASE="${DB_DATABASE:-edu}"
-DB_USERNAME="${DB_USERNAME:-root}"
-DB_PASSWORD="${DB_PASSWORD:-1234}"
+DB_PORT="${DB_PORT:-5432}"
+DB_DATABASE="${DB_DATABASE:-edulearn}"
+DB_USERNAME="${DB_USERNAME:-postgres}"
+DB_PASSWORD="${DB_PASSWORD:-postgres}"
 
-echo "==> Waiting for database connection (${DB_HOST}:${DB_PORT}/${DB_DATABASE})..."
+echo "==> Waiting for database connection (${DB_CONNECTION}://${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_DATABASE})..."
 max_retries=30
 count=0
 until php -r "
     try {
-        \$pdo = new PDO('mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}', '${DB_USERNAME}', '${DB_PASSWORD}', [PDO::ATTR_TIMEOUT => 3]);
+        if ('${DB_CONNECTION}' === 'pgsql') {
+            \$dsn = 'pgsql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}';
+        } else {
+            \$dsn = 'mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}';
+        }
+        \$pdo = new PDO(\$dsn, '${DB_USERNAME}', '${DB_PASSWORD}', [PDO::ATTR_TIMEOUT => 3]);
         exit(0);
     } catch (Exception \$e) {
         exit(1);

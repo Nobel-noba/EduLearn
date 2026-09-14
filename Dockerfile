@@ -1,5 +1,5 @@
 # ==============================================================================
-# Multi-Stage Dockerfile for EduLearn (Laravel 13 + Inertia JS v2 + React + MySQL)
+# Multi-Stage Dockerfile for EduLearn (Laravel 13 + Inertia JS v2 + React + PostgreSQL)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -46,7 +46,8 @@ RUN apk update && apk add --no-cache \
     libzip-dev \
     icu-dev \
     libxml2-dev \
-    mariadb-client
+    postgresql-dev \
+    postgresql-client
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -67,8 +68,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Configure Nginx
+RUN rm -f /etc/nginx/conf.d/*.conf /etc/nginx/http.d/*.conf
 COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
-RUN mkdir -p /etc/nginx/conf.d && cp /etc/nginx/http.d/default.conf /etc/nginx/conf.d/default.conf
 
 # Configure PHP & Opcache
 COPY docker/php/php.ini $PHP_INI_DIR/conf.d/99-custom.ini

@@ -65,8 +65,8 @@ export default function Footer() {
                                 <span>React 19 & Tailwind CSS</span>
                             </p>
                             <p className="flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>MySQL Relational Engine</span>
+                                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                                <span>PostgreSQL Relational Engine</span>
                             </p>
                             <p className="flex items-center gap-1.5">
                                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
