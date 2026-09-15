@@ -22,11 +22,11 @@ fi
 
 # Wait for Database connection if DB_HOST is provided
 DB_CONNECTION="${DB_CONNECTION:-pgsql}"
-DB_HOST="${DB_HOST:-db}"
+DB_HOST="${DB_HOST:-host.docker.internal}"
 DB_PORT="${DB_PORT:-5432}"
 DB_DATABASE="${DB_DATABASE:-edulearn}"
 DB_USERNAME="${DB_USERNAME:-postgres}"
-DB_PASSWORD="${DB_PASSWORD:-postgres}"
+DB_PASSWORD="${DB_PASSWORD:-1234}"
 
 echo "==> Waiting for database connection (${DB_CONNECTION}://${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_DATABASE})..."
 max_retries=30

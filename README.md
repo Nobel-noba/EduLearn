@@ -69,11 +69,12 @@ EduLearn is a production-ready, full-stack educational marketplace and learning 
 
 ## Docker Quick Start (2 Minutes)
 
-Deploy the entire platform (Web Application, Nginx, PHP 8.4 FPM, and PostgreSQL 16) using a single Docker command.
+Deploy the platform application container (Web Application, Nginx, PHP 8.4 FPM) connecting directly to an **external PostgreSQL database** (such as your local PostgreSQL/pgAdmin installation or a managed cloud database).
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS, Windows with WSL2, or Linux)
 - [Docker Compose](https://docs.docker.com/compose/) (v2.0 or higher, bundled with Docker Desktop)
+- Local or external PostgreSQL server running with database `edulearn`
 
 ### 1. Clone the Repository
 ```bash
@@ -82,7 +83,10 @@ cd EduLearn
 ```
 
 ### 2. Prepare Environment Configuration
-The repository includes a ready-to-use `.env.docker` profile. Copy it to `.env`:
+The repository includes a ready-to-use `.env.docker` configured for external PostgreSQL access:
+- On Windows / macOS, `host.docker.internal` allows the container to seamlessly reach your host's local PostgreSQL / pgAdmin.
+- Default development credentials: user `postgres`, password `1234`, port `5432`, database `edulearn`.
+
 ```bash
 # On Linux / macOS:
 cp .env.docker .env
@@ -91,23 +95,24 @@ cp .env.docker .env
 copy .env.docker .env
 ```
 
-### 3. Launch the Stack
+### 3. Launch the Application Container
 ```bash
 docker compose up -d --build
 ```
 
-Docker will automatically:
+Docker will:
 1. Build the multi-stage image (compile Vite React frontend + configure PHP 8.4 FPM & Nginx with `pdo_pgsql`).
-2. Start the PostgreSQL 16 database container and automatically import the pre-seeded `edulearn` database from `docker/postgres/init.sql`.
-3. Start the EduLearn application with Supervisor managing Nginx and PHP-FPM.
+2. Launch the `edulearn-app` container and connect to your external PostgreSQL instance at `host.docker.internal:5432`.
+3. Auto-cache configuration and start Supervisor managing Nginx and PHP-FPM.
 
 ### 4. Access the Application
-Once the containers are healthy (approximately 15–30 seconds):
+Once the container is up:
 
-| Service | URL | Default Credentials |
+| Service | URL | Connection Details |
 | :--- | :--- | :--- |
-| **EduLearn Application** | [http://localhost:8000](http://localhost:8000) | Use 1-Click Switcher in header |
-| **PostgreSQL Database Port** | `localhost:5432` | User: `postgres` / Pass: `postgres` / DB: `edulearn` |
+| **EduLearn Application** | [http://localhost:8000](http://localhost:8000) | 1-Click Switcher in header |
+| **Database Host (from Container)** | `host.docker.internal:5432` | User: `postgres` / DB: `edulearn` |
+| **Database Host (from Host / pgAdmin)** | `localhost:5432` | User: `postgres` / DB: `edulearn` |
 
 ---
 
@@ -162,19 +167,21 @@ The platform utilizes a modern containerized design:
                │  ┌──────────────────────────────────────────────────┐  │
                │  │  Container: edulearn-app (Port: 8000 -> 80)     │  │
                │  │  ┌────────────────┐     ┌─────────────────────┐  │  │
-               │  │  │ Nginx (Alpine) │ ──> │ PHP 8.3 FPM         │  │  │
+               │  │  │ Nginx (Alpine) │ ──> │ PHP 8.4 FPM         │  │  │
                │  │  │ (Reverse Proxy)│     │ (Laravel + Inertia) │  │  │
                │  │  └────────────────┘     └─────────────────────┘  │  │
                │  │           ▲                                      │  │
                │  │           └───── Managed by Supervisord          │  │
                │  └──────────────────────────┬───────────────────────┘  │
-               │                             │ (PDO PostgreSQL)         │
-               │                             ▼                          │
-               │  ┌──────────────────────────────────────────────────┐  │
-               │  │  Container: edulearn-db (Port: 5432 -> 5432)     │  │
-               │  │  PostgreSQL 16 Engine                            │  │
-               │  │  Database: edulearn (Persistent Volume: pg_data) │  │
-               │  └──────────────────────────────────────────────────┘  │
+               └─────────────────────────────┼──────────────────────────┘
+                                             │ (PDO PostgreSQL Connection)
+                                             ▼
+               ┌────────────────────────────────────────────────────────┐
+               │         External PostgreSQL Database Provider          │
+               │                                                        │
+               │ • Dev: Local PostgreSQL / pgAdmin (host.docker.internal)│
+               │ • Prod: Managed Cloud (Render / Neon / Supabase / RDS) │
+               │ • Database: edulearn                                   │
                └────────────────────────────────────────────────────────┘
 ```
 
@@ -260,35 +267,75 @@ This mounts your local workspace directory directly into `/var/www` while isolat
 
 ## Production Deployment Guide
 
-To deploy EduLearn to any cloud VPS (Ubuntu/Debian, DigitalOcean, AWS EC2, Linode, Hetzner, Render):
+To deploy EduLearn to any cloud platform or VPS (Render, Railway, AWS EC2 / RDS, DigitalOcean, Linode, Hetzner):
 
-### 1. Install Docker on Server
+### 1. Database Credentials Placement for Production
+
+EduLearn is architected to connect to any external PostgreSQL database provider (e.g., **AWS RDS, Neon, Supabase, Render PostgreSQL, DigitalOcean Managed Database**).
+
+#### Where to Place Credentials:
+
+Depending on your hosting platform, place your database credentials in one of the following locations:
+
+#### Option A: In the Production `.env` (or `.env.docker`) File (VPS / Docker Host)
+When deploying via Docker Compose or directly on a server, create `.env` in your project root:
+
+```bash
+# --- Application Configuration ---
+APP_NAME=EduLearn
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://yourdomain.com
+APP_KEY=base64:YOUR_GENERATED_APP_KEY
+
+# --- External PostgreSQL Database Credentials ---
+DB_CONNECTION=pgsql
+DB_HOST=your-production-db-host.neon.tech        # or rds.amazonaws.com, supabase.co, etc.
+DB_PORT=5432
+DB_DATABASE=edulearn_prod                        # your cloud database name
+DB_USERNAME=your_db_username
+DB_PASSWORD=YOUR_STRONG_SECURE_PASSWORD
+DB_SSLMODE=require                               # required for most cloud providers (Supabase, Neon, RDS)
+
+# Optional single connection URL (supported by Laravel):
+# DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
+```
+
+#### Option B: Cloud Environment Variables / Secrets Dashboard (Render, Railway, Fly.io, Heroku)
+If deploying via a cloud platform with GUI configuration:
+1. Navigate to your project's **Environment Variables** / **Secrets** dashboard tab.
+2. Add the following environment keys:
+   - `DB_CONNECTION`: `pgsql`
+   - `DB_HOST`: your external database host domain (e.g., `ep-xyz.us-east-1.aws.neon.tech`)
+   - `DB_PORT`: `5432`
+   - `DB_DATABASE`: your database name
+   - `DB_USERNAME`: your database username
+   - `DB_PASSWORD`: your database password
+   - `DB_SSLMODE`: `require` (or `prefer`)
+   - `APP_KEY`: run `php artisan key:generate --show` to generate a production 32-character key.
+   - `APP_URL`: `https://yourdomain.com`
+
+---
+
+### 2. Install Docker on Server (If using self-hosted VPS)
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 ```
 
-### 2. Configure Environment for Production
-Create your production `.env` with strong passwords and your domain:
-```bash
-APP_NAME=EduLearn
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://yourdomain.com
-
-DB_CONNECTION=pgsql
-DB_HOST=db
-DB_PORT=5432
-DB_DATABASE=edulearn
-DB_USERNAME=postgres
-DB_PASSWORD=YOUR_STRONG_SECURE_PASSWORD
-```
-
-Update `POSTGRES_PASSWORD` in `docker-compose.yml` to match.
-
-### 3. Deploy with Docker Compose
+### 3. Deploy Application Container
 ```bash
 docker compose up -d --build
+```
+
+### 4. Run Initial Migrations & Seeds on Production Database
+Run migrations to create the 15 application tables and optional seed demo data:
+```bash
+# Run database migrations:
+docker compose exec app php artisan migrate --force
+
+# (Optional) Seed platform demo data:
+docker compose exec app php artisan db:seed --force
 ```
 
 ### 4. Reverse Proxy with SSL (Certbot / Nginx)
