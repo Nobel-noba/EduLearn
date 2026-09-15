@@ -70,10 +70,10 @@ if [ ! -L /var/www/public/storage ]; then
     php artisan storage:link --force || true
 fi
 
-# Run database migrations if explicitly enabled
-if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
-    echo "==> Running database migrations..."
-    php artisan migrate --force
+# Ensure database is migrated and seeded if empty (development & production)
+if [ "${AUTO_SEED_IF_EMPTY:-true}" = "true" ]; then
+    echo "==> Ensuring database is migrated and seeded if empty..."
+    php artisan db:ensure-seeded --force --no-interaction
 fi
 
 # Production optimizations or development cache clearing

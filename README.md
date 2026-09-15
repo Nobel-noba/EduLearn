@@ -130,11 +130,26 @@ Use the **1-Click Persona Switcher** dropdown in the top announcement bar to ins
 
 ---
 
-## Database Architecture & Pre-Seeded Data
+## Database Architecture & Automatic Seeding
 
-When the PostgreSQL container initializes for the first time, it automatically runs [`docker/postgres/init.sql`](docker/postgres/init.sql) inside `/docker-entrypoint-initdb.d/`. Alternatively, you can use standard Laravel migrations and seeders:
+### Automatic Migration & Seeding on Deployment
+Whenever EduLearn is deployed (either in **development** or in **production**), the application entrypoint automatically executes:
 ```bash
-php artisan migrate --seed
+php artisan db:ensure-seeded --force
+```
+- **Automated Schema Migration**: Runs all pending database migrations (`migrate --force`).
+- **Empty State Detection**: Checks if the database is newly created or empty (inspects the primary `user` table).
+- **Auto-Seeding**: If empty, it runs `db:seed --force` automatically to populate categories, courses, lessons, quizzes, demo users, and platform settings.
+- **Idempotent & Safe**: If existing data is detected, seeding is safely skipped so no user records or course progress are ever overwritten or duplicated.
+- **Configurable**: Can be controlled via `AUTO_SEED_IF_EMPTY=true` in your environment configuration.
+
+You can also manually trigger this check or run standard artisan commands at any time:
+```bash
+# Ensure migrated and seeded if empty
+php artisan db:ensure-seeded
+
+# Or full reset (caution: drops tables)
+php artisan migrate:fresh --seed
 ```
 
 ### 15 Relational Tables Included:
