@@ -1,4 +1,4 @@
-# EduLearn - Educational Video Platform & Marketplace
+# EduLearn PG - Educational Video Platform & Marketplace
 
 <p align="center">
   <img src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&auto=format&fit=crop&q=80" alt="EduLearn Banner" width="100%" style="border-radius: 16px; max-height: 380px; object-fit: cover;" />
